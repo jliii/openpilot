@@ -30,6 +30,16 @@ def safe_fn(s):
   extra = ['_']
   return "".join(c for c in s if c.isalnum() or c in extra).rstrip()
 
+def safe_mv(src, dst):
+  """Files can be on different disks. Need to copy and then delete
+  shutil.move doesn't always detect this properly"""
+  mkdirs_exists_ok(crashlog_dir)
+  try:
+    shutil.copy(src, dst)
+    os.remove(src)
+  except PermissionError:
+    pass
+
 
 def sentry_report(client, fn, message, contents):
   cloudlog.error({'tombstone': message})
@@ -169,11 +179,8 @@ def report_tombstone_apport(fn, client):
   new_fn = f"{date}_{commit[:8]}_{safe_fn(clean_path)}"[:MAX_TOMBSTONE_FN_LEN]
 
   crashlog_dir = os.path.join(ROOT, "crash")
-  mkdirs_exists_ok(crashlog_dir)
 
-  # Files could be on different filesystems, copy, then delete
-  shutil.copy(fn, os.path.join(crashlog_dir, new_fn))
-  os.remove(fn)
+  safe_mv(fn, os.path.join(crashlog_dir, new_fn))
 
 
 def main():
